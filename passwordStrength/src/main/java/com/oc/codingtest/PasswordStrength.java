@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.*;
 
@@ -29,7 +31,18 @@ public class PasswordStrength {
    * @return
    */
   public int getMaxRepetitionCount(String password) {
-    return 1;
+    Map<Integer, Long> charToRepetitionCount = password.chars()
+            .boxed()
+            .collect(Collectors.groupingBy(
+                    Function.identity(),
+                    Collectors.counting()
+            ));
+
+    return charToRepetitionCount.values()
+            .stream()
+            .mapToInt(Long::intValue)
+            .max()
+            .orElse(0);
   }
 
   /**
