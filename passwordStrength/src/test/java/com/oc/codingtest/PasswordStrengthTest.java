@@ -71,4 +71,31 @@ class PasswordStrengthTest {
     assertEquals(expectedResult, ps.getMaxSequenceLen(password));
   }
 
+  private static Stream<Arguments> isPasswordPermissibleArgProvider() {
+    return Stream.of(
+            // repetitions > max, sequence < max
+            Arguments.of("SmartyGrantsAAAA", 5, 2, false),
+            // repetitions == max, sequence < max
+            Arguments.of("MichaelIsAGr8Engineer!123", 4, 4, true),
+            // repetitions < max, sequence < max
+            Arguments.of("Grassr00tsAction", 4, 3, true),
+            // repetitions < max, sequence > max
+            Arguments.of("IW4nt2workwithU4321", 4, 3, false),
+            // repetitions < max, sequence == max
+            Arguments.of("123OCHouseABCDEF", 3, 6, true),
+            // repetitions < max, sequence < max
+            Arguments.of("ASMANYASIWANT987654321ZZZZZZZZ", 45, 65, true),
+            // repetitions == max, sequence == max
+            Arguments.of("n0_rep3atz!", 1, 1, true),
+            // repetitions > max, sequence > max
+            Arguments.of("Toooooomanyrepeats123456", 5, 5, false)
+    );
+  }
+
+  @ParameterizedTest
+  @DisplayName("Permissible password tests")
+  @MethodSource("com.oc.codingtest.PasswordStrengthTest#isPasswordPermissibleArgProvider")
+  void checkingIsPasswordPermissible(String password, int maxAllowedRepetitionCount, int maxAllowedSequenceLength, boolean expectedResult) {
+    assertEquals(expectedResult, ps.isPasswordPermissible(password, maxAllowedRepetitionCount, maxAllowedSequenceLength));
+  }
 }
