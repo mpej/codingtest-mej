@@ -48,11 +48,16 @@ class PasswordStrengthTest {
       Arguments.of("ABCdef", 6),
       //descending - mixed case
       Arguments.of("fedCBA", 6),
+      //ascending - mixed alpha and numeric
+      Arguments.of("password123", 3),
+      //descending - mixed alpha and numeric
+      Arguments.of("passwordcba123", 4),
 
       //Exclude/handle non-alphanumeric chars
       Arguments.of("/012345678", 9),
       Arguments.of("0123456789:", 10),
       Arguments.of("01234*567:", 5),
+      Arguments.of("012#$%&345", 3),
 
       //Ascending and descending mixed
       Arguments.of("23454321", 5)
