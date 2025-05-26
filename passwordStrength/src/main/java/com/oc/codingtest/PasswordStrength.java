@@ -7,8 +7,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.*;
-
 public class PasswordStrength {
 
   private static final Logger log = LoggerFactory.getLogger(PasswordStrength.class);
@@ -60,6 +58,176 @@ public class PasswordStrength {
    * @return
    */
   public int getMaxSequenceLen(String password) {
-    return 0;
+
+    String normalisedPassword = password.toUpperCase();
+    int maxSequenceLen = 1;
+
+    NormalisedChar previousChar = NormalisedChar.createFromChar(normalisedPassword.charAt(0));
+    CharSequence sequence = new CharSequence();
+
+    for (int i = 1; i < normalisedPassword.length(); i++) {
+      NormalisedChar currentChar = NormalisedChar.createFromChar(normalisedPassword.charAt(i));
+      boolean charTypeHasChanged = currentChar.type() != previousChar.type();
+
+      if(charTypeHasChanged || currentChar.isNonAlphanumeric()) {
+        // sequence has broken due to either:
+        //     - change of type
+        //     - char being non-alphanumeric, we don't track those sequences
+        // restart sequence
+        if(sequence.getLength() > maxSequenceLen ) {
+          maxSequenceLen = sequence.getLength();
+        }
+        sequence.restart();
+      } else {
+        // previous and current chars share type, we need to check the sequence direction
+        SequenceDirection currentDirection = currentChar.getDirectionFrom(previousChar);
+
+        if(sequence.getDirection() == SequenceDirection.NO_DIRECTION) {
+          if(currentDirection == SequenceDirection.ASCENDING || currentDirection == SequenceDirection.DESCENDING) {
+            // we are starting a sequence in a new direction
+            sequence.increment();
+            sequence.setDirection(currentDirection);
+          } else {
+            // we don't track sequences with NO_DIRECTION
+            sequence.restart();
+          }
+        } else {
+          boolean sequenceContinuingInSameDirection = currentDirection == sequence.getDirection();
+          boolean sequenceFlippingDirection = currentDirection != SequenceDirection.NO_DIRECTION;
+
+          if(sequenceContinuingInSameDirection) {
+            sequence.increment();
+          } else if (sequenceFlippingDirection) {
+            if(sequence.getLength() > maxSequenceLen) {
+              maxSequenceLen = sequence.getLength();
+            }
+            sequence.setLength(2);
+            sequence.setDirection(currentDirection);
+          } else {
+            // current char is not in sequence, sequence is broken
+            if(sequence.getLength() > maxSequenceLen) {
+              maxSequenceLen = sequence.getLength();
+            }
+            sequence.restart();
+          }
+        }
+      }
+      previousChar = currentChar;
+    }
+
+    if(sequence.getLength() > maxSequenceLen) {
+      maxSequenceLen = sequence.getLength();
+    }
+
+    return maxSequenceLen;
+  }
+
+  private enum CharType {
+    ALPHABETICAL,
+    NUMERIC,
+    NON_ALPHANUMERIC
+  }
+
+  private enum SequenceDirection{
+    ASCENDING,
+    DESCENDING,
+    NO_DIRECTION
+  }
+
+  /**
+   * Convenience class for normalising the ascii value of a char based on its CharType
+   * @param type
+   * @param normalisedValue
+   */
+  private record NormalisedChar(CharType type, int normalisedValue) {
+
+    public static NormalisedChar createFromChar(char character){
+      CharType type = getCharType(character);
+      int normalisedValue = switch (type) {
+          case ALPHABETICAL -> character - 'A';
+          case NUMERIC -> character - '0';
+          case NON_ALPHANUMERIC -> character;
+      };
+      return new NormalisedChar(type, normalisedValue);
+    }
+
+    private static CharType getCharType(char character) {
+      CharType charType = CharType.NON_ALPHANUMERIC;
+
+      if (Character.isDigit(character)) {
+        charType = CharType.NUMERIC;
+      } else if (Character.isLetter(character)) {
+        charType = CharType.ALPHABETICAL;
+      }
+
+      return charType;
+    }
+
+    public boolean isNonAlphanumeric() {
+      return type == CharType.NON_ALPHANUMERIC;
+    }
+
+    /**
+     * Given a NormalisedChar, if it were directly before this NormalisedChar in a sequence, determines the direction
+     * of the sequence.
+     * @param previousChar
+     * @return ASCENDING if this is one positive increment in sequence from previousChar, DESCENDING if this is one
+     * negative increment in sequence from previousChar, else NO_DIRECTION
+     */
+    public SequenceDirection getDirectionFrom(NormalisedChar previousChar) {
+        final int sequenceAscendingDiff = 1;
+        final int sequenceDescendingDiff = -1;
+
+      int charDifference = this.normalisedValue() - previousChar.normalisedValue();
+
+      return switch(charDifference) {
+        case sequenceAscendingDiff -> SequenceDirection.ASCENDING;
+        case sequenceDescendingDiff -> SequenceDirection.DESCENDING;
+        default -> SequenceDirection.NO_DIRECTION;
+      };
+    }
+  }
+
+  /**
+   * Convenience class for tracking the length and direction of a sequence.
+   */
+  private static class CharSequence {
+
+    private SequenceDirection direction;
+    private int length;
+
+    public CharSequence(SequenceDirection direction, int length) {
+      this.direction = direction;
+      this.length = length;
+    }
+
+    public CharSequence(){
+      this(SequenceDirection.NO_DIRECTION, 1);
+    }
+
+    public void restart() {
+      this.direction = SequenceDirection.NO_DIRECTION;
+      this.length = 1;
+    }
+
+    public void increment() {
+      this.length++;
+    }
+
+    public SequenceDirection getDirection() {
+      return direction;
+    }
+
+    public void setDirection(SequenceDirection direction){
+      this.direction = direction;
+    }
+
+    public int getLength() {
+      return length;
+    }
+
+    public void setLength(int length){
+      this.length = length;
+    }
   }
 }
